@@ -1,9 +1,10 @@
 import logging
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.middleware.auth import get_current_user
 
 logging.basicConfig(
     level=logging.INFO,
@@ -29,3 +30,8 @@ app.add_middleware(
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok"}
+
+
+@app.get("/api/auth/me")
+async def get_me(user_id: str = Depends(get_current_user)):
+    return {"user_id": user_id}
