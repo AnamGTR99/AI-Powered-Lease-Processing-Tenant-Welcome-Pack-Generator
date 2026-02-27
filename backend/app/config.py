@@ -9,7 +9,6 @@ class Settings(BaseSettings):
 
     # AI APIs
     gemini_api_key: str = ""
-    mistral_api_key: str = ""
 
     # CORS
     frontend_url: str = "http://localhost:5173"

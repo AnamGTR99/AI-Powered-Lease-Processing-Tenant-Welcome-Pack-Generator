@@ -110,8 +110,8 @@ The sole user role. They log in, upload leases, and download generated Welcome P
 
 | Req ID | Requirement | Details |
 |--------|------------|---------|
-| FR-EXTRACT-01 | Text extraction from PDF | Use Mistral OCR API to convert PDF to text |
-| FR-EXTRACT-02 | Text extraction from DOCX | Use python-docx locally (no API call needed) |
+| FR-EXTRACT-01 | Text extraction from PDF | Use PyMuPDF (`fitz`) locally to extract text page-by-page. No external API call needed |
+| FR-EXTRACT-02 | Text extraction from DOCX | Use python-docx XML body walking locally — walk `doc.element.body` in document order for paragraphs and tables |
 | FR-EXTRACT-03 | Structured field extraction | Send extracted text to Gemini 2.0 Flash with a strict JSON schema prompt requesting all 14 fields |
 | FR-EXTRACT-04 | Pydantic validation | Validate Gemini's response against a Pydantic model with all 14 fields |
 | FR-EXTRACT-05 | Retry on partial extraction | If any field is null/missing, retry extraction with a targeted follow-up prompt for just the missing fields |
@@ -340,80 +340,88 @@ Auth: Required
 
 ## 7. AI Design
 
-### 7.1 Text Extraction Strategy
+### 7.1 Text Extraction Strategy (Unified Local Pipeline)
+
+Both file types are extracted locally — no external API calls needed for text extraction.
 
 | Input Type | Method | Details |
 |------------|--------|---------|
-| DOCX | python-docx (local) | Iterate all paragraphs and tables, extract text with structure. No API call needed — DOCX is XML under the hood |
-| PDF | Mistral OCR API | Send PDF bytes to Mistral's free-tier OCR endpoint. Returns markdown-formatted text. Handles scanned/image-based PDFs |
+| DOCX | python-docx XML body walking (local) | Walk `doc.element.body` children in document order using `qn('w:p')` for paragraphs and `qn('w:tbl')` for tables. This preserves interleaved paragraph/table order and captures all content. Table rows formatted as pipe-delimited cells |
+| PDF | PyMuPDF / `fitz` (local) | Extract text page-by-page using `page.get_text("text")` which preserves reading order. Pages separated with `--- Page N ---` markers. No external API call — fast, no rate limits |
 
 ### 7.2 Structured Field Extraction (Gemini 2.0 Flash)
 
-**Prompt design:**
+**Prompt design** (edge-case-aware, validated against all 5 sample leases):
 
 ```
-You are a document data extraction assistant. You are given the full text of
-a residential lease agreement from Melbourne, Australia.
+You are a precise document extraction assistant specialising in Australian residential lease agreements.
 
-Extract exactly these 14 fields and return them as a JSON object:
+Extract the following 14 fields from the lease agreement text provided. Return ONLY a valid JSON object — no markdown, no explanation, no extra text.
+
+FIELDS TO EXTRACT:
 
 {
-  "tenant_name": "Full name(s) of tenant(s). If joint tenancy, format as 'Name1 & Name2'",
-  "property_address": "Full address including street, suburb, state, and postcode",
-  "lease_start_date": "Normalize to 'D Month YYYY' format (e.g., '15 April 2026')",
-  "lease_end_date": "Normalize to 'D Month YYYY' format (e.g., '14 April 2027')",
-  "rent_amount": "Dollar amount with frequency, e.g., '$1,750.00 per month' or '$1,150.00 per fortnight'",
-  "bond_amount": "Dollar amount, e.g., '$3,500.00'",
-  "num_occupants": "Number as stated in the lease",
-  "pet_permission": "'Not permitted' OR full description including any conditions",
-  "parking": "'Not included' OR full details including space number and location",
-  "special_conditions": "Full text of special conditions if any exist. null if no special conditions apply",
-  "landlord_name": "Full name of landlord/owner as listed in the parties section",
-  "property_manager_name": "Name of property manager/agent contact person",
-  "property_manager_email": "Email address of property manager",
-  "property_manager_phone": "Phone number of property manager"
+  "tenant_name": "Full name(s). If joint tenancy, format as 'Marcus Johnson & Lisa Johnson'. Never truncate.",
+  "property_address": "Full address including unit/apartment number, street, suburb, state and postcode. E.g. '18 River Road, Unit 7, Abbotsford VIC 3067'",
+  "lease_start_date": "Standardise to DD Month YYYY format. E.g. '15 April 2026'. Input may be '15/04/2026', '1 April 2026', 'April 1, 2026' — normalise all to this format.",
+  "lease_end_date": "Same format as lease_start_date.",
+  "rent_amount": "Include amount, currency and frequency. E.g. '$2,650.00 per month' or '$1,150.00 per fortnight'. Never strip the frequency.",
+  "bond_amount": "Dollar amount only. E.g. '$5,300.00'",
+  "num_occupants": "Integer as a string. E.g. '1' or '2'",
+  "pet_permission": "One of two formats: (A) If pets are not permitted: 'Not permitted'. (B) If pets are permitted: write a concise summary of the permission and ALL conditions listed, in plain English. Do not just say 'Permitted' — include the conditions.",
+  "parking": "One of two formats: (A) If no parking: 'Not included'. (B) If parking is included: describe it fully including space number, level, and access method if stated.",
+  "special_conditions": "CRITICAL RULE: If the lease states there are no special conditions (e.g. 'Nil', 'No special conditions apply', 'Nil. No special conditions apply.') — return null (JSON null, not the string 'null' or 'None'). Only return text here if REAL special conditions exist. If they do exist, summarise them clearly in plain English.",
+  "landlord_name": "Full name as listed in the parties section.",
+  "property_manager_name": "The contact person's name only. E.g. 'Julia Torres'",
+  "property_manager_email": "Email address. E.g. 'julia.torres@acmepg.com.au'",
+  "property_manager_phone": "Phone number as listed. E.g. '+61 3 9555 0142'"
 }
 
-Rules:
-- Return ONLY valid JSON, no markdown, no explanation
-- For dates, always normalize to "D Month YYYY" regardless of input format
-- For rent, always include the dollar amount AND frequency
-- For special_conditions, return null (not "None", not "Nil", not "No special conditions") if there are no special conditions
-- For pet_permission, if pets are permitted with conditions, include the full conditions text
-- For parking, if parking is included, include all details (space number, level, access info)
-- If a field cannot be found, return null for that field
+CRITICAL RULES:
+1. special_conditions must be JSON null if no real conditions exist. This controls whether the section appears in the output document at all.
+2. For rent_amount, always include the payment frequency (per month / per fortnight). Never omit it.
+3. For joint tenancies, include both full names joined with ' & '.
+4. For pet_permission, if permitted, include ALL conditions listed — not just "Permitted".
+5. For property_address, always include the unit/apartment/flat/studio number if present.
+6. Do not invent or assume any data not present in the document.
+7. Return ONLY the JSON object. No markdown fences. No explanation.
 
-Lease text:
----
-{extracted_text}
----
+LEASE AGREEMENT TEXT:
+{lease_text}
 ```
 
-### 7.3 Validation Strategy
+### 7.3 Validation & Retry Strategy
 
-1. Parse Gemini response as JSON
-2. Validate against Pydantic `ExtractedLeaseData` model
-3. Check for null fields — all fields except `special_conditions` should be non-null
-4. If any required field is null, **retry once** with a targeted prompt:
+1. **Parse**: Strip markdown fences if present (defensive against model adding ```json), then `json.loads()`
+2. **Key check**: Verify all 14 keys exist in the response
+3. **Pydantic validation**: Validate against `ExtractedLeaseData` model
+4. **Sanity checks** (post-extraction validation layer):
+   - Date format: both dates should parse as `"%d %B %Y"`; end date must be after start date
+   - Rent frequency: `rent_amount` must contain "per" (per month / per fortnight)
+   - Bond format: `bond_amount` must start with "$"
+   - Log warnings for any failed checks
+5. **Retry with correction prompt** if validation fails:
    ```
-   The following fields could not be extracted from the lease. Please try again,
-   looking more carefully: {list of missing fields}
+   Your previous extraction had the following issues:
+   {warnings}
 
-   Lease text:
-   ---
-   {extracted_text}
-   ---
+   Here is what you returned:
+   {previous_json}
+
+   Please fix only the problematic fields and return the corrected full JSON object.
+   Do not change fields that were correct.
    ```
-5. Merge retry results with initial results
-6. If still missing after retry, store what we have and mark status accordingly
+6. Merge retry results with initial results
+7. If still missing after retry, store what we have and mark status accordingly
+8. **Auditability**: Store the raw extracted text in Supabase alongside the structured JSON for debugging
 
-### 7.4 Model Justification
+### 7.4 Model & Tool Justification
 
-| Model | Why |
-|-------|-----|
-| **Mistral OCR** | Free tier available. Purpose-built for document OCR. Handles various PDF layouts. Returns clean markdown text |
-| **Gemini 2.0 Flash** | Free tier (60 requests/min). Excellent at structured data extraction. Fast response times. Supports JSON mode |
-| **python-docx** (not AI) | DOCX files are already machine-readable XML. Using AI for text extraction from DOCX would waste API quota and add latency for no benefit |
+| Tool | Why |
+|------|-----|
+| **PyMuPDF (`fitz`)** | Local PDF text extraction — no API call, no rate limits, no cost. Handles multi-page PDFs with reading-order text extraction. Faster and more reliable than external OCR APIs for text-based PDFs |
+| **python-docx XML walking** | Walk the raw XML body in document order to capture interleaved paragraphs and tables. More reliable than `doc.paragraphs` + `doc.tables` which misses ordering context |
+| **Gemini 2.0 Flash** | Free tier (60 requests/min). Excellent at structured data extraction. Fast response times. Supports JSON mode. Single API call for all 14 fields |
 
 ---
 
@@ -497,7 +505,6 @@ SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_SERVICE_KEY=eyJ...  (service role key for server-side operations)
 SUPABASE_JWT_SECRET=...      (for JWT verification)
 GEMINI_API_KEY=...            (free tier)
-MISTRAL_API_KEY=...           (free tier)
 ```
 
 **Frontend (Vercel):**
