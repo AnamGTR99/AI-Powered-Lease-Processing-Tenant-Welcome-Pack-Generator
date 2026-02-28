@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { smoothEase, staggerContainer, staggerItem, scaleOnHover } from '@/lib/motion'
 import { apiFetch } from '@/lib/api'
@@ -50,6 +50,7 @@ export default function History() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -213,7 +214,8 @@ export default function History() {
               <motion.div
                 key={lease.upload_id}
                 variants={staggerItem}
-                className="flex items-center border-b border-slate-100 bg-white px-6 py-4 transition-colors hover:bg-slate-50/50 last:border-0"
+                onClick={() => navigate(`/history/${lease.upload_id}`)}
+                className="flex cursor-pointer items-center border-b border-slate-100 bg-white px-6 py-4 transition-colors hover:bg-slate-50/50 last:border-0"
               >
                 {/* Date */}
                 <div className="flex w-[130px] shrink-0 flex-col gap-0.5">
@@ -248,7 +250,7 @@ export default function History() {
                   {lease.status === 'complete' && lease.has_welcome_pack && (
                     <motion.button
                       {...scaleOnHover}
-                      onClick={() => handleDownload(lease.upload_id, lease.file_name)}
+                      onClick={(e) => { e.stopPropagation(); handleDownload(lease.upload_id, lease.file_name) }}
                       disabled={isDownloading}
                       className="flex items-center gap-1.5 rounded-lg bg-slate-100 px-3.5 py-1.5 text-[13px] font-medium text-[#1B4F72] transition-colors hover:bg-slate-200 disabled:opacity-50"
                     >

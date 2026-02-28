@@ -6,6 +6,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Upload from './pages/Upload'
 import History from './pages/History'
+import LeaseDetail from './pages/LeaseDetail'
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/upload" element={<Upload />} />
             <Route path="/history" element={<History />} />
+            <Route path="/history/:uploadId" element={<LeaseDetail />} />
           </Route>
 
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

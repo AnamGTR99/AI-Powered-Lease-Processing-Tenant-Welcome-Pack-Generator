@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/contexts/AuthContext'
 import { smoothEase, staggerContainer, staggerItem, scaleOnHover } from '@/lib/motion'
@@ -54,6 +54,7 @@ function statusBadge(status: string) {
 
 export default function Dashboard() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [leases, setLeases] = useState<LeaseHistoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -232,7 +233,8 @@ export default function Dashboard() {
               <motion.div
                 key={lease.upload_id}
                 variants={staggerItem}
-                className="flex items-center justify-between border-b border-slate-100 bg-white px-5 py-4 last:border-0"
+                onClick={() => navigate(`/history/${lease.upload_id}`)}
+                className="flex cursor-pointer items-center justify-between border-b border-slate-100 bg-white px-5 py-4 transition-colors hover:bg-slate-50/50 last:border-0"
               >
                 <div>
                   <p className="text-[14px] font-normal text-slate-700">
