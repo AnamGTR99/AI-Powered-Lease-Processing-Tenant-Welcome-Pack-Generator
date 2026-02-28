@@ -19,13 +19,15 @@ from pathlib import Path
 from docx import Document
 from docx.oxml.ns import qn
 
+from app.config import settings
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Template path
+# Template path — resolved from settings (env var TEMPLATE_PATH or local default)
 # ---------------------------------------------------------------------------
 
-TEMPLATE_PATH = Path(__file__).resolve().parent.parent.parent.parent / "template" / "Tenant Welcome Pack Template.docx"
+TEMPLATE_PATH = Path(settings.template_path)
 
 # ---------------------------------------------------------------------------
 # Field name → template placeholder mapping

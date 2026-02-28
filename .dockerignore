@@ -1,0 +1,29 @@
+# Frontend (not needed in backend image)
+frontend/
+docs/
+
+# Backend artifacts
+backend/venv/
+backend/.venv/
+backend/__pycache__/
+backend/tests/
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+backend/*.egg-info/
+
+# Environment files (secrets — set via Railway env vars)
+**/.env
+**/.env.*
+
+# Python bytecode
+**/__pycache__/
+**/*.pyc
+
+# Git
+.git/
+.gitignore
+
+# Misc
+*.md
+epic_3_new_approach.md
