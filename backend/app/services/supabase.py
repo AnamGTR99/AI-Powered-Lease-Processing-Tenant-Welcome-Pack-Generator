@@ -193,6 +193,11 @@ def upload_welcome_pack_file(
     return path
 
 
+def download_welcome_pack_file(file_path: str) -> bytes:
+    """Download a welcome pack .docx by its storage path."""
+    return get_client().storage.from_("welcome-packs").download(file_path)
+
+
 def get_welcome_pack_download_url(file_path: str, expires_in: int = 300) -> str:
     """Generate a signed download URL for a welcome pack (default 5 min expiry)."""
     result = get_client().storage.from_("welcome-packs").create_signed_url(

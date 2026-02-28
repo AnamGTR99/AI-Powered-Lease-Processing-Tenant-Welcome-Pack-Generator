@@ -34,5 +34,26 @@ class LeaseUploadResponse(BaseModel):
     }}
 
 
+class LeaseHistoryItem(BaseModel):
+    upload_id: str
+    file_name: str
+    status: str
+    created_at: str
+    tenant_name: str | None = None
+    property_address: str | None = None
+    has_welcome_pack: bool = False
+
+
+class LeaseDetailResponse(BaseModel):
+    upload_id: str
+    file_name: str
+    file_type: str
+    status: str
+    created_at: str
+    error_message: str | None = None
+    extracted_data: dict | None = None
+    welcome_pack_url: str | None = None
+
+
 class ErrorResponse(BaseModel):
     detail: str
