@@ -139,3 +139,27 @@
     border-color: oklch(1 0 0 / 20%);
   }
 }
+
+/* Particle drift animation — autonomous floating */
+@keyframes particle-drift {
+  0%, 100% {
+    transform: translate(0, 0) rotate(var(--rotation, 0deg));
+    opacity: 0.25;
+  }
+  25% {
+    transform: translate(var(--drift-x, 20px), calc(var(--drift-y, 20px) * -1)) rotate(var(--rotation, 0deg));
+    opacity: 0.4;
+  }
+  50% {
+    transform: translate(calc(var(--drift-x, 20px) * -0.5), var(--drift-y, 20px)) rotate(var(--rotation, 0deg));
+    opacity: 0.3;
+  }
+  75% {
+    transform: translate(calc(var(--drift-x, 20px) * -1), calc(var(--drift-y, 20px) * -0.5)) rotate(var(--rotation, 0deg));
+    opacity: 0.35;
+  }
+}
+
+.animate-particle-drift {
+  animation: particle-drift linear infinite;
+}

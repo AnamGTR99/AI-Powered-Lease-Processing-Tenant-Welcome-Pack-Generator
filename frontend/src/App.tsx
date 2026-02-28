@@ -16,6 +16,7 @@ function AnimatedRoutes() {
       <motion.div key={location.pathname} {...pageTransitionProps} className="min-h-screen">
         <Routes location={location}>
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Login />} />
           <Route
             path="/dashboard"
             element={
