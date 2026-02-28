@@ -24,8 +24,8 @@ COPY --from=builder /build/venv /app/venv
 # Copy application code
 COPY backend/app/ /app/app/
 
-# Copy Welcome Pack template
-COPY template/Tenant\ Welcome\ Pack\ Template.docx /app/template/Tenant\ Welcome\ Pack\ Template.docx
+# Copy Welcome Pack template (JSON form handles spaces in filename)
+COPY ["template/Tenant Welcome Pack Template.docx", "/app/template/Tenant Welcome Pack Template.docx"]
 
 # Put venv Python on PATH
 ENV PATH="/app/venv/bin:$PATH"
