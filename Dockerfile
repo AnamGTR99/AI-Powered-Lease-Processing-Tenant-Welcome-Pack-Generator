@@ -38,4 +38,4 @@ ENV PORT=8000
 
 EXPOSE ${PORT}
 
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --workers 1"]
+CMD ["sh", "-c", "/app/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --workers 1"]
