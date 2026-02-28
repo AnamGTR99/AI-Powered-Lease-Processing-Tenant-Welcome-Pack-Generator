@@ -22,7 +22,7 @@ COPY ["template/Tenant Welcome Pack Template.docx", "/app/template/Tenant Welcom
 ENV TEMPLATE_PATH="/app/template/Tenant Welcome Pack Template.docx"
 
 # Railway provides PORT automatically; default 8000 for local Docker
-ENV PORT=8000
+ENV PORT=8080
 
 EXPOSE ${PORT}
 
