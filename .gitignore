@@ -32,6 +32,9 @@ build/
 # Claude Code
 .claude/
 
+# Chat logs (contain secrets from session transcripts)
+docs/chat-logs/*.jsonl
+
 # Logs
 *.log
 npm-debug.log*

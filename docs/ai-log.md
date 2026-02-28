@@ -116,3 +116,217 @@ This document tracks how AI tools were used during development, including key pr
 - `special_conditions` returned as string `"None"` instead of JSON `null` — added normalization step to convert string "None"/"Nil" to actual null
 - Date leading zeros (`"01 June 2026"`) — added normalization to strip leading zeros
 **Iterations:** 3 (deprecated package → model not available → special_conditions/date normalization)
+
+---
+
+## Day 2 — Epic 3 (Continued): Pipeline & Benchmarking
+
+### [INL-15] Build lease upload + extraction endpoint
+**Tool:** Claude Code (Opus 4.6)
+**What I asked:** Build the POST /api/lease/upload endpoint that orchestrates the full pipeline: file storage → text extraction → Gemini → DB save
+**What worked:**
+- Full pipeline orchestration in a single endpoint with proper error handling at each stage
+- Multipart file upload with validation (PDF/DOCX, size limit)
+- Status tracking (processing → complete/failed) with error messages persisted
+**What I fixed:** Nothing — worked on first attempt
+**Iterations:** 1
+
+### [INL-16] Test extraction accuracy against all 5 sample leases
+**Tool:** Claude Code (Opus 4.6)
+**What I asked:** Run a formal extraction benchmark against all 5 sample leases, verify every field
+**What worked:**
+- Automated benchmark script testing all 70 fields (14 fields × 5 leases)
+- Initial result: 69/70 correct — one special conditions field paraphrased by Gemini
+**What I fixed:** Identified the paraphrasing issue → fed into INL-30 prompt refinement
+**Iterations:** 1
+
+### [INL-30] Refine Gemini extraction prompt
+**Tool:** Claude Code (Opus 4.6)
+**What I asked:** Fix the special conditions paraphrasing — Gemini was rewording "No pets unless written consent" instead of copying verbatim
+**What worked:**
+- Added explicit "copy verbatim, do not paraphrase or summarize" instruction to the prompt
+- Re-ran benchmark: 70/70 perfect score
+**What I fixed:** Prompt wording — added verbatim extraction directive
+**Iterations:** 2 (identify issue → fix prompt → verify)
+
+---
+
+## Day 2 — Epic 4: Welcome Pack Generation
+
+### [INL-17] Implement Welcome Pack .docx generation service
+**Tool:** Claude Code (Opus 4.6)
+**What I asked:** Build the docgen service that loads the template, replaces all 14 placeholders, handles run-splitting, and removes Special Conditions section when null
+**What worked:**
+- Run-splitting-safe replacement: handles placeholders split across multiple XML runs
+- Special Conditions section removal by paragraph index
+- All 5 leases generate correct Welcome Packs
+**What I fixed:** Nothing — worked on first attempt after careful template analysis
+**Iterations:** 1
+
+### [INL-18] Build download, history, and detail endpoints
+**Tool:** Claude Code (Opus 4.6)
+**What I asked:** Build GET /api/welcome-pack/download/{upload_id}, GET /api/lease/history, GET /api/lease/{upload_id}
+**What worked:**
+- Download endpoint returns .docx binary with correct Content-Disposition header
+- History returns user's uploads ordered by created_at DESC
+- Detail returns full extracted data + welcome pack URL
+**What I fixed:** Nothing — all endpoints worked on first attempt
+**Iterations:** 1
+
+### [INL-19] Test Welcome Pack output for all 5 leases
+**Tool:** Claude Code (Opus 4.6)
+**What I asked:** Run a comprehensive benchmark — upload all 5 leases, generate Welcome Packs, verify all fields populated correctly
+**What worked:**
+- Automated benchmark: 39/39 checks passed (33 field checks + 6 structural checks)
+- All rent amounts correctly normalized to monthly
+- Special Conditions section correctly removed for "Nil" leases
+**What I fixed:** Nothing — all passed
+**Iterations:** 1
+
+### [INL-31] Normalize rent amount to consistent monthly format
+**Tool:** Claude Code (Opus 4.6)
+**What I asked:** Fix rent normalization — fortnightly and weekly amounts need conversion to monthly in the Welcome Pack
+**What worked:**
+- Fortnightly × 2.17262, weekly × 4.35 conversion factors
+- Strips "AUD" and "calendar" prefixes Gemini sometimes adds
+- Regex-based parsing of "$X,XXX.XX per frequency" format
+**What I fixed:** Initial conversion factor for fortnightly was ×2.167 (26/12) — corrected to ×2.17262 (365.25/14/12 × 14/12... standard calendar factor)
+**Iterations:** 2 (initial factor → corrected factor)
+
+---
+
+## Day 2 — Epic 5: Frontend UX & Polish
+
+### [INL-32] Frontend scaffold + Paper.design + design system
+**Tool:** Claude Code (Opus 4.6) + Paper.design MCP
+**What I asked:** Set up design tokens, motion presets, brand assets, and register Paper.design MCP
+**What worked:**
+- Shared motion presets (smoothEase, staggerContainer, staggerItem, scaleOnHover, spring)
+- Brand color palette, Inter font setup
+- Paper.design MCP connected for design-first workflow
+**What I fixed:** Nothing — setup was straightforward
+**Iterations:** 1
+
+### [INL-33] Auth pages — Login & Register
+**Tool:** Claude Code (Opus 4.6) + Paper.design MCP
+**What I asked:** Build Apple-style auth pages with particle background and animated transitions
+**What worked:**
+- 80-particle rAF system with cursor attraction (cubic easing, HSL color cycling)
+- 10-segment spring-physics cursor trail (tangent-aligned, breathing sine-wave)
+- iOS 26-inspired liquid glass card (cursor-reactive specular highlight, 3D tilt)
+- Login/Register with AnimatePresence crossfade
+**What I fixed:**
+- Particle follow wasn't obvious enough — increased attract radius (0.4→0.6), pull multiplier (800→1200)
+- User requested removing circle particles, keeping only dashes
+**Iterations:** 4 (base particles → stronger follow → cursor trail → liquid glass)
+
+### [INL-23] App shell — animated layout, navigation, route transitions
+**Tool:** Claude Code (Opus 4.6) + Paper.design MCP
+**What I asked:** Build the shared layout shell with glassmorphism navbar, animated nav indicator, page transitions
+**What worked:**
+- Glassmorphism navbar with backdrop-filter: blur(24px) saturate(180%)
+- Framer Motion layoutId for animated nav pill indicator
+- Sign out confirmation popover with animated entrance
+- Nested layout routes with Outlet pattern
+**What I fixed:**
+- **AnimatePresence + Outlet double render flash:** AnimatePresence mode="wait" conflicted with React Router's Outlet. Pages rendered twice on navigation. Fixed by removing AnimatePresence from the shell — each page handles its own entrance animation.
+- Added footer with "By Anam Milfer for InLogic" attribution
+**Iterations:** 3 (initial build → AnimatePresence flash fix attempt → final fix)
+
+### [INL-21] Upload page — drag-drop, processing flow, results
+**Tool:** Claude Code (Opus 4.6) + Paper.design MCP
+**What I asked:** Build the core upload flow: drop zone → file selected → processing stages → 14-field results
+**What worked:**
+- Drag-over effects (border color, icon bounce, background tint)
+- Fake stage progression (2s, 5s timers) while real API runs in background
+- 14 fields in 4 grouped sections with staggered entrance
+- Download Welcome Pack with spinner → checkmark states
+- Client-side validation (PDF/DOCX, 10MB max)
+**What I fixed:** Nothing — worked cleanly after Paper.design iteration
+**Iterations:** 1 (designed 3 artboards in Paper.design, then single implementation pass)
+
+### [INL-20] Dashboard — glass cards, stats, recent uploads
+**Tool:** Claude Code (Opus 4.6)
+**What I asked:** Build the dashboard with live API data: stat cards, recent uploads, empty state
+**What worked:**
+- 3 glassmorphism stat cards (Total Uploads, Processed, Welcome Packs)
+- Recent Activity: last 5 uploads with tenant name, property, status badge, relative time
+- Loading skeletons, empty state, error state all implemented
+- Wired directly to GET /api/lease/history (originally planned for separate ticket)
+**What I fixed:** Nothing — worked on first attempt
+**Iterations:** 1
+
+### [INL-22] History page — animated table, status badges, downloads
+**Tool:** Claude Code (Opus 4.6) + Paper.design MCP
+**What I asked:** Build the history table: column headers, data rows with status badges, download/retry actions
+**What worked:**
+- Clean table with fixed-width column lanes (Date, Tenant/Property, Status, Actions)
+- Status badges: Completed (green), Failed (red), Processing (yellow)
+- Download button per completed row with spinner state
+- Row click navigates to detail page
+**What I fixed:** Nothing — clean implementation after Paper.design mockup
+**Iterations:** 1
+
+---
+
+## Day 2 — Epic 6: Deployment & Testing
+
+### [INL-35] Lease detail page
+**Tool:** Claude Code (Opus 4.6) + Paper.design MCP
+**What I asked:** Build /history/:uploadId showing full extracted data for any past upload
+**What worked:**
+- 14 fields in 4 grouped sections matching Upload results layout
+- Back link, status badge, download button, loading skeleton, error state
+- Wired History and Dashboard rows to navigate here on click
+**What I fixed:**
+- Rent amount card had accent styling (blue border, bold) that stood out — user requested matching all other fields. Removed accent logic.
+**Iterations:** 2 (initial build → remove accent styling)
+
+### [INL-25] Deploy backend to Railway
+**Tool:** Claude Code (Opus 4.6)
+**What I asked:** Create Dockerfile, make template path configurable, add multi-origin CORS support
+**What worked:**
+- TEMPLATE_PATH env var with sensible local default via pydantic-settings
+- Comma-separated FRONTEND_URL for multi-environment CORS
+- Final Dockerfile: single-stage, global pip install, slim base image
+**What I fixed:**
+- Dockerfile COPY with spaces in filename — backslash escaping failed. Fixed with JSON array form: `COPY ["src", "dest"]`
+- Multi-stage venv shebang mismatch — scripts had hardcoded `#!/build/venv/bin/python`. Dropped venv entirely, installed globally.
+- uvicorn "not found" — ENV PATH wasn't inherited by `sh -c`. Used absolute path, then simplified to global install.
+**Iterations:** 4 (multi-stage venv → space fix → shebang fix → drop venv)
+
+### [INL-26] Deploy frontend to Vercel
+**Tool:** Claude Code (Opus 4.6)
+**What I asked:** Guide deployment steps, fix any issues
+**What worked:**
+- Vercel auto-detected Vite framework from frontend/ root directory
+- Environment variables set correctly
+**What I fixed:**
+- 404 on page refresh — Vercel needs SPA rewrites. Added vercel.json with `"rewrites": [{"source": "/(.*)", "destination": "/index.html"}]`
+**Iterations:** 2 (deploy → SPA routing fix)
+
+### [INL-27] End-to-end smoke test
+**Tool:** Manual testing by user on deployed app
+**What was tested:** Full flow — register, login, upload lease, verify 14 fields, download Welcome Pack, history page, detail page, dashboard stats
+**Result:** All tests passed
+**What I fixed:**
+- Navbar logo wasn't clickable — wrapped in Link to /dashboard
+- Supabase email confirmation was enabled — guided user to disable it in Supabase dashboard
+**Iterations:** 1
+
+---
+
+## Summary Statistics
+
+| Metric | Value |
+|--------|-------|
+| Total tickets completed | 27 (+ 2 cancelled) |
+| Total AI sessions | 4 |
+| Total messages | ~4,706 |
+| AI tool | Claude Code (Opus 4.6) |
+| MCP integrations | Linear (project mgmt), Paper.design (UI design) |
+| Days | 2 |
+
+## Raw Chat Logs
+
+Full conversation transcripts are in `docs/chat-logs/` as JSONL files. See `docs/chat-logs/README.md` for the session index.
