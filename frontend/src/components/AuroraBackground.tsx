@@ -73,7 +73,7 @@ function generateParticles(): Particle[] {
     baseX: Math.random(),
     baseY: Math.random(),
     size: 3 + Math.random() * 6,
-    dash: Math.random() > 0.25,
+    dash: true,  // all dashes, no circles
     rotation: Math.random() * 360,
     driftPhaseX: Math.random() * Math.PI * 2,
     driftPhaseY: Math.random() * Math.PI * 2,

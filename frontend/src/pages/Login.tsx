@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/contexts/AuthContext'
 import { fadeInUp, smoothEase, scaleOnHover } from '@/lib/motion'
 import AuroraBackground from '@/components/AuroraBackground'
+import LiquidGlassCard from '@/components/LiquidGlassCard'
 
 export default function Login() {
   const { session, signIn, signUp } = useAuth()
@@ -58,11 +59,9 @@ export default function Login() {
           initial="initial"
           animate="animate"
           transition={{ ...smoothEase, duration: 0.6 }}
-          className="glass w-full max-w-[420px] rounded-[20px] px-10 pb-10 pt-12"
-          style={{
-            boxShadow: '0 8px 32px rgba(27,79,114,0.08), 0 1px 3px rgba(0,0,0,0.04)',
-          }}
+          className="w-full max-w-[420px]"
         >
+        <LiquidGlassCard className="rounded-[20px] px-10 pb-10 pt-12">
           {/* Logo */}
           <div className="mb-5 flex justify-center">
             <img src="/logo.svg" alt="Acme Property Group" className="h-11" />
@@ -232,6 +231,7 @@ export default function Login() {
               </motion.form>
             )}
           </AnimatePresence>
+        </LiquidGlassCard>
         </motion.div>
       </div>
     </AuroraBackground>
