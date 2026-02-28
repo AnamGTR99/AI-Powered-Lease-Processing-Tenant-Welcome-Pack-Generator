@@ -12,6 +12,7 @@ and preserves formatting from the original placeholder runs.
 
 import io
 import logging
+import re
 from copy import deepcopy
 from pathlib import Path
 
@@ -50,6 +51,57 @@ PLACEHOLDER_MAP = {
 # Paragraph indices for the Special Conditions section
 _SPECIAL_CONDITIONS_HEADING_IDX = 11  # "Special Conditions" heading
 _SPECIAL_CONDITIONS_BODY_IDX = 12     # {{special_conditions}} placeholder
+
+
+# ---------------------------------------------------------------------------
+# Rent normalization
+# ---------------------------------------------------------------------------
+
+def _normalize_rent(rent_str: str) -> str:
+    """
+    Normalize rent to consistent monthly format for the Welcome Pack.
+
+    Converts fortnightly (x 2.17262) and weekly (x 4.35) amounts to monthly.
+    Strips 'AUD' and 'calendar' if Gemini still includes them.
+    Monthly amounts pass through unchanged.
+
+    Returns format: '$X,XXX.XX per month'
+    """
+    if not rent_str:
+        return rent_str
+
+    # Strip AUD and "calendar" if Gemini still includes them
+    cleaned = rent_str.replace(" AUD", "").replace("AUD ", "").replace("calendar ", "").strip()
+
+    # Extract dollar amount and frequency
+    match = re.match(r"\$?([\d,]+\.?\d*)\s+per\s+(\w+)", cleaned)
+    if not match:
+        logger.warning("Could not parse rent_amount '%s' — returning as-is", rent_str)
+        return rent_str
+
+    amount_str = match.group(1).replace(",", "")
+    frequency = match.group(2).lower()
+
+    try:
+        amount = float(amount_str)
+    except ValueError:
+        return rent_str
+
+    # Convert to monthly
+    if frequency == "fortnight":
+        amount = amount * 2.17262
+    elif frequency == "week":
+        amount = amount * 4.35
+    elif frequency == "month":
+        pass  # Already monthly
+    else:
+        logger.warning("Unknown rent frequency '%s' — returning as-is", frequency)
+        return rent_str
+
+    normalized = f"${amount:,.2f} per month"
+    if frequency != "month":
+        logger.info("Converted rent from '%s' to '%s'", rent_str, normalized)
+    return normalized
 
 
 # ---------------------------------------------------------------------------
@@ -192,6 +244,9 @@ def generate_welcome_pack(extracted_data: dict) -> bytes:
     for field_name, placeholder in PLACEHOLDER_MAP.items():
         value = extracted_data.get(field_name)
         if value is not None:
+            # Normalize rent to monthly for the Welcome Pack display
+            if field_name == "rent_amount":
+                value = _normalize_rent(str(value))
             replacements[placeholder] = str(value)
 
     # Step 3: Replace placeholders in all paragraphs

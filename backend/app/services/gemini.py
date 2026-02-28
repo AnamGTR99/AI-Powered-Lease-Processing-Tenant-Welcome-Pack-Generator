@@ -46,7 +46,7 @@ FIELDS TO EXTRACT:
   "property_address": "Full address including unit/apartment number, street, suburb, state and postcode. E.g. '18 River Road, Unit 7, Abbotsford VIC 3067'",
   "lease_start_date": "Standardise to DD Month YYYY format. E.g. '15 April 2026'. Input may be '15/04/2026', '1 April 2026', 'April 1, 2026' — normalise all to this format.",
   "lease_end_date": "Same format as lease_start_date.",
-  "rent_amount": "Include amount, currency and frequency. E.g. '$2,650.00 per month' or '$1,150.00 per fortnight'. Never strip the frequency.",
+  "rent_amount": "Include amount and frequency only. Format: '$X,XXX.XX per month' or '$X,XXX.XX per fortnight' or '$X,XXX.XX per week'. Do NOT include currency codes like 'AUD'. Do NOT use 'calendar month' — just 'month'. Never strip the frequency.",
   "bond_amount": "Dollar amount only. E.g. '$5,300.00'",
   "num_occupants": "Integer as a string. E.g. '1' or '2'",
   "pet_permission": "One of two formats: (A) If pets are not permitted: 'Not permitted'. (B) If pets are permitted with conditions: list the pet type allowed and ALL conditions in a single sentence. Start with the pet type. E.g. 'One desexed and microchipped domestic cat is permitted, subject to: professional flea treatment every 3 months, liability for any pet-related damage, and the landlord's right to withdraw permission.' Use the exact terms from the lease — do not substitute synonyms.",

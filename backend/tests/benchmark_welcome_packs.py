@@ -194,6 +194,23 @@ def check_value_present(doc: Document, label: str, value: str) -> tuple[bool, st
     return False, f"'{value}' NOT found"
 
 
+def check_rent_consistency(doc: Document) -> tuple[bool, str]:
+    """Verify rent displays as '$X,XXX.XX per month' — no AUD, no calendar, no fortnightly."""
+    all_text = get_all_text(doc)
+    issues = []
+    if "AUD" in all_text:
+        issues.append("contains 'AUD'")
+    if "calendar month" in all_text.lower():
+        issues.append("contains 'calendar month'")
+    if "per fortnight" in all_text.lower():
+        issues.append("contains 'per fortnight'")
+    if "per week" in all_text.lower():
+        issues.append("contains 'per week'")
+    if issues:
+        return False, f"Rent inconsistency: {', '.join(issues)}"
+    return True, "Rent format consistent (no AUD/calendar/fortnightly/weekly)"
+
+
 # ---------------------------------------------------------------------------
 # Main benchmark
 # ---------------------------------------------------------------------------
@@ -311,11 +328,14 @@ def run_benchmark():
             checks.append(("Joint tenancy names", check_value_present(doc, "joint tenancy", "Marcus Johnson & Lisa Johnson")))
 
         if file_name == "Lease Agreement - Raj Patel.docx":
-            checks.append(("Fortnightly rent", check_value_present(doc, "fortnightly rent", "$1,150.00 per fortnight")))
+            checks.append(("Monthly rent (converted)", check_value_present(doc, "monthly rent", "$2,498.51 per month")))
             checks.append(("Parking details", check_value_present(doc, "parking space", "Space #47")))
 
         if file_name == "Lease Agreement - David Okafor.docx":
             checks.append(("Pet conditions detail", check_value_present(doc, "pet conditions", "desexed")))
+
+        # 6. Rent consistency — no AUD, calendar month, fortnightly, or weekly
+        checks.append(("Rent format consistent", check_rent_consistency(doc)))
 
         # Key contacts
         checks.append(("Property manager name", check_value_present(doc, "PM name", "Julia Torres")))
