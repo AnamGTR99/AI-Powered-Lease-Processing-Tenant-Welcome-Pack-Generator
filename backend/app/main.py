@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.middleware.auth import get_current_user
+from app.routers import lease as lease_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -25,6 +26,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+app.include_router(lease_router.router)
 
 
 @app.get("/api/health")

@@ -112,7 +112,7 @@ The sole user role. They log in, upload leases, and download generated Welcome P
 |--------|------------|---------|
 | FR-EXTRACT-01 | Text extraction from PDF | Use PyMuPDF (`fitz`) locally to extract text page-by-page. No external API call needed |
 | FR-EXTRACT-02 | Text extraction from DOCX | Use python-docx XML body walking locally — walk `doc.element.body` in document order for paragraphs and tables |
-| FR-EXTRACT-03 | Structured field extraction | Send extracted text to Gemini 2.0 Flash with a strict JSON schema prompt requesting all 14 fields |
+| FR-EXTRACT-03 | Structured field extraction | Send extracted text to Gemini 2.5 Flash with a strict JSON schema prompt requesting all 14 fields |
 | FR-EXTRACT-04 | Pydantic validation | Validate Gemini's response against a Pydantic model with all 14 fields |
 | FR-EXTRACT-05 | Retry on partial extraction | If any field is null/missing, retry extraction with a targeted follow-up prompt for just the missing fields |
 | FR-EXTRACT-06 | Date normalization | Normalize all dates to "D Month YYYY" format (e.g., "15 April 2026") |
@@ -282,13 +282,17 @@ Body: file (PDF or DOCX)
 → 500 { "detail": "Extraction failed: ..." }
 ```
 
-This is a **synchronous** endpoint that:
-1. Validates + stores the file
-2. Extracts text (python-docx or Mistral OCR)
-3. Sends to Gemini for structured extraction
-4. Validates 14 fields
-5. Generates Welcome Pack .docx
-6. Returns everything in one response
+This is a **synchronous** endpoint that uses a **LeaseService** pattern (router stays thin, service handles orchestration):
+1. Validates file type + size
+2. Stores file in Supabase Storage → status: `uploaded`
+3. Extracts text via unified local pipeline (XML body walking for DOCX, PyMuPDF for PDF) → status: `extracting`
+4. Sends extracted text to Gemini 2.5 Flash for structured field extraction
+5. Validates 14 fields via Pydantic, saves to DB → status: `extracted`
+6. Generates Welcome Pack .docx (docgen service) → status: `generating`
+7. Uploads Welcome Pack to Storage, saves record → status: `complete`
+8. On failure at any stage → status: `failed` with error_message
+
+Status is updated in Supabase at every stage for observability — if a request fails, you can see exactly which step broke.
 
 Rationale: Single-lease-at-a-time, takes ~10-30 seconds. Simpler than async polling for a prototype.
 
@@ -349,7 +353,7 @@ Both file types are extracted locally — no external API calls needed for text 
 | DOCX | python-docx XML body walking (local) | Walk `doc.element.body` children in document order using `qn('w:p')` for paragraphs and `qn('w:tbl')` for tables. This preserves interleaved paragraph/table order and captures all content. Table rows formatted as pipe-delimited cells |
 | PDF | PyMuPDF / `fitz` (local) | Extract text page-by-page using `page.get_text("text")` which preserves reading order. Pages separated with `--- Page N ---` markers. No external API call — fast, no rate limits |
 
-### 7.2 Structured Field Extraction (Gemini 2.0 Flash)
+### 7.2 Structured Field Extraction (Gemini 2.5 Flash)
 
 **Prompt design** (edge-case-aware, validated against all 5 sample leases):
 
@@ -421,7 +425,7 @@ LEASE AGREEMENT TEXT:
 |------|-----|
 | **PyMuPDF (`fitz`)** | Local PDF text extraction — no API call, no rate limits, no cost. Handles multi-page PDFs with reading-order text extraction. Faster and more reliable than external OCR APIs for text-based PDFs |
 | **python-docx XML walking** | Walk the raw XML body in document order to capture interleaved paragraphs and tables. More reliable than `doc.paragraphs` + `doc.tables` which misses ordering context |
-| **Gemini 2.0 Flash** | Free tier (60 requests/min). Excellent at structured data extraction. Fast response times. Supports JSON mode. Single API call for all 14 fields |
+| **Gemini 2.5 Flash** | Free tier (60 requests/min). Excellent at structured data extraction. Fast response times. Supports JSON mode. Single API call for all 14 fields |
 
 ---
 
