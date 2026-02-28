@@ -7,11 +7,12 @@ class LeaseUploadResponse(BaseModel):
     upload_id: str
     status: str
     extracted_data: dict
+    welcome_pack_url: str | None = None
 
     model_config = {"json_schema_extra": {
         "examples": [{
             "upload_id": "550e8400-e29b-41d4-a716-446655440000",
-            "status": "extracted",
+            "status": "complete",
             "extracted_data": {
                 "tenant_name": "Sarah Chen",
                 "property_address": "42 Oakwood Avenue, Apartment 3B, Richmond VIC 3121",
@@ -28,6 +29,7 @@ class LeaseUploadResponse(BaseModel):
                 "property_manager_email": "julia.torres@acmepg.com.au",
                 "property_manager_phone": "+61 3 9555 0142",
             },
+            "welcome_pack_url": "https://xxx.supabase.co/storage/v1/object/sign/welcome-packs/...",
         }],
     }}
 
