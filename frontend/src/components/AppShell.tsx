@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, useLocation, Outlet } from 'react-router-dom'
+import { NavLink, Link, useLocation, Outlet } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/contexts/AuthContext'
 import { smoothEase } from '@/lib/motion'
@@ -44,9 +44,9 @@ export default function AppShell() {
         <div className="mx-auto flex h-16 w-full max-w-[1200px] items-center justify-between px-6">
           {/* Left: Logo + Nav */}
           <div className="flex items-center gap-8">
-            <div className="flex items-center gap-2.5">
+            <Link to="/dashboard" className="flex items-center gap-2.5">
               <img src="/logo.svg" alt="Acme Property Group" className="h-8" />
-            </div>
+            </Link>
 
             <nav className="flex items-center gap-1">
               {NAV_ITEMS.map((item) => {
