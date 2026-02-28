@@ -49,9 +49,9 @@ FIELDS TO EXTRACT:
   "rent_amount": "Include amount, currency and frequency. E.g. '$2,650.00 per month' or '$1,150.00 per fortnight'. Never strip the frequency.",
   "bond_amount": "Dollar amount only. E.g. '$5,300.00'",
   "num_occupants": "Integer as a string. E.g. '1' or '2'",
-  "pet_permission": "One of two formats: (A) If pets are not permitted: 'Not permitted'. (B) If pets are permitted: write a concise summary of the permission and ALL conditions listed, in plain English. Do not just say 'Permitted' — include the conditions.",
+  "pet_permission": "One of two formats: (A) If pets are not permitted: 'Not permitted'. (B) If pets are permitted with conditions: list the pet type allowed and ALL conditions in a single sentence. Start with the pet type. E.g. 'One desexed and microchipped domestic cat is permitted, subject to: professional flea treatment every 3 months, liability for any pet-related damage, and the landlord's right to withdraw permission.' Use the exact terms from the lease — do not substitute synonyms.",
   "parking": "One of two formats: (A) If no parking: 'Not included'. (B) If parking is included: describe it fully including space number, level, and access method if stated.",
-  "special_conditions": "CRITICAL RULE: If the lease states there are no special conditions (e.g. 'Nil', 'No special conditions apply', 'Nil. No special conditions apply.') — return null (JSON null, not the string 'null' or 'None'). Only return text here if REAL special conditions exist. If they do exist, summarise them clearly in plain English.",
+  "special_conditions": "CRITICAL RULE: If the lease states there are no special conditions (e.g. 'Nil', 'No special conditions apply', 'Nil. No special conditions apply.') — return null (JSON null, not the string 'null' or 'None'). Only return text here if REAL special conditions exist. If they do exist, list each special condition as a separate sentence. Use the exact terminology from the lease — do not paraphrase or substitute synonyms. Preserve key nouns exactly as written (e.g. 'short-term rental' must stay as 'short-term rental', not 'short-term rent').",
   "landlord_name": "Full name as listed in the parties section.",
   "property_manager_name": "The contact person's name only. E.g. 'Julia Torres'",
   "property_manager_email": "Email address. E.g. 'julia.torres@acmepg.com.au'",
@@ -65,7 +65,8 @@ CRITICAL RULES:
 4. For pet_permission, if permitted, include ALL conditions listed — not just "Permitted".
 5. For property_address, always include the unit/apartment/flat/studio number if present.
 6. Do not invent or assume any data not present in the document.
-7. Return ONLY the JSON object. No markdown fences. No explanation.
+7. For text-heavy fields (pet_permission, parking, special_conditions), use the exact terminology from the lease where possible. Do not substitute synonyms or paraphrase legal terms.
+8. Return ONLY the JSON object. No markdown fences. No explanation.
 
 LEASE AGREEMENT TEXT:
 {lease_text}"""
